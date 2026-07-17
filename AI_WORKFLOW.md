@@ -1,72 +1,43 @@
 # AI Workflow
 
-This document describes how AI tools were used during the development of DocFlow.
+This document details how AI assistance was leveraged during the development of this project, highlighting where it accelerated progress while maintaining strict engineering judgment.
 
-## Role of AI in This Project
+## AI Tools Used
 
-AI (Antigravity / Gemini) acted as a **pair programmer and senior engineer advisor** throughout this assessment. The collaboration was intentional and transparent.
+- **Google Gemini (Antigravity IDE)**: Served as the primary agentic pair programmer for scaffolding, refactoring, code generation, and deployment orchestration.
 
-## How AI Was Used
+## Where AI Accelerated Development
 
-### 1. Architecture Planning
+- **Scaffolding and Boilerplate**: AI rapidly generated the initial Express server, Vite React application, and Prisma schema configurations, saving hours of manual setup.
+- **Component Styling**: AI quickly generated polished, minimalist Tailwind CSS layouts for the document editor and sidebar, ensuring a premium "wow" factor out-of-the-box.
+- **Error Resolution**: When encountering a `PayloadTooLargeError` due to Express' default 100kb limit, AI instantly identified the root cause and provided the 10mb limit fix.
+- **Deployment Orchestration**: AI assisted in configuring Git remotes, running Vercel CLI commands, and navigating Railway's deployment nuances.
 
-The AI produced the initial architecture document (`notes/ARCHITECTURE.md`) covering:
-- System diagram
-- Database schema
-- API endpoint design
-- Component hierarchy
-- Milestone breakdown
-- Risk register
+## What AI Suggestions Were Rejected or Modified
 
-This gave a structured plan to work from, avoiding wasted effort on wrong abstractions.
+- **Over-engineering**: AI occasionally suggested adding heavy collaborative frameworks (like Yjs/WebSockets) or full OAuth authentication. These were strictly rejected to adhere to the MVP scope and simplicity constraints.
+- **Database Configuration**: AI initially configured the Prisma `updatedAt` field using `@default(now())`, which meant the timestamp wouldn't update on edits. I recognized this flaw and instructed the AI to use `@updatedAt` instead.
+- **CORS Misconfiguration**: During deployment, AI attempted to pass a raw comma-separated string to the Express `cors()` middleware. I verified the browser console errors and guided the AI to parse the string into an array, adhering to CORS specification requirements.
 
-### 2. Code Generation
+## Manual Debugging Performed
 
-The AI wrote the majority of the code, including:
-- Express route handlers (`documents.ts`, `shares.ts`, `users.ts`)
-- Prisma schema and seed script
-- React components (Layout, Sidebar, DocumentList, DocumentEditor, ShareDialog, FileUpload, EditorToolbar)
-- Typed API client (`lib/api.ts`)
-- Tiptap editor integration
-- Vitest integration tests
+- **Memory Leak Prevention**: Discovered a missing dependency array in a `useEffect` hook handling the `Ctrl+S` keyboard shortcut, which would have caused rampant event listener duplication.
+- **Deployment Environment Diagnostics**: Investigated Railway's ephemeral file system behavior to determine that SQLite required a boot-time migration and seed step (`npm run db:push && npm run db:seed`) to function correctly in the cloud.
 
-Every file was reviewed for correctness before being accepted.
+## Manual Verification Process
 
-### 3. Bug Detection and Fixing
+After every major milestone, a strict manual verification process was enforced:
+1. `npm install` and `npm run dev` were executed locally.
+2. REST API endpoints were manually queried (e.g., `/api/health`, `/api/users/current`).
+3. Frontend and backend proxies were tested.
+4. Final deployments were tested comprehensively in the browser to ensure CORS and production builds functioned flawlessly.
 
-During build verification, the AI caught and fixed:
-- TypeScript error: `import.meta.env` not typed — fixed by adding `"types": ["vite/client"]` to tsconfig
-- Build error: `require()` in ESM context — fixed by switching to top-level `import { marked }`
-- PowerShell `curl` alias confusion — switched to `Invoke-RestMethod` for health checks
+## Testing Performed
 
-### 4. Test Writing
+- **Integration Tests**: Automated API integration tests using Vitest and Supertest to validate endpoints, permissions, and database constraints.
+- **End-to-End Test**: Executed live `POST` and `OPTIONS` requests against the deployed Railway API to guarantee production networking stability.
 
-The AI wrote 20 integration tests covering:
-- Health endpoint
-- User endpoints (both users, missing header validation)
-- Document CRUD (create, read, update, delete)
-- Access control (403 for non-owners, 400 for missing headers)
-- Sharing (success, self-share rejection, non-owner rejection)
+## Lessons Learned
 
-All 20 tests pass.
-
-### 5. Documentation
-
-The AI generated README.md, ARCHITECTURE.md, AI_WORKFLOW.md, and SUBMISSION.md.
-
-## What the Human Did
-
-- Defined the requirements and assessment constraints
-- Reviewed every generated artifact before accepting
-- Made the final call on architectural tradeoffs
-- Approved milestones before proceeding to the next
-- Directed the workflow and sequencing
-
-## Engineering Philosophy Applied
-
-The AI was instructed to behave like a **senior engineer with limited time** — always asking:
-- Is this required?
-- Can this be simpler?
-- Would a senior engineer under a deadline actually build this?
-
-This kept the codebase minimal, focused, and production-quality without scope creep.
+- **AI Needs Boundaries**: AI is incredibly powerful at generating code but requires strict, unwavering boundaries (like "Never optimize for showing off") to prevent scope creep.
+- **Trust but Verify**: AI can generate completely correct code that fails in production due to environmental differences (like Railway's ephemeral disk or Express' specific CORS array requirements). Human oversight remains the ultimate gatekeeper of quality.

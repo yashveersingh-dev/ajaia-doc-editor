@@ -1,143 +1,79 @@
-# DocFlow — Architecture
+# Architecture
 
-## Overview
+This document outlines the architectural decisions and system design for the Ajaia DocFlow application.
 
-DocFlow is a lightweight document editor with a simple 3-layer architecture: React frontend, Express REST API, and SQLite database via Prisma ORM.
+## High-Level Architecture
 
-```
-┌────────────────────────────────────────┐
-│  Frontend (Vite + React)               │
-│  Port 5173  ·  Deployed: Vercel        │
-└──────────────────┬─────────────────────┘
-                   │ HTTP REST (proxied in dev)
-                   ▼
-┌────────────────────────────────────────┐
-│  Backend (Express + TypeScript)        │
-│  Port 3001  ·  Deployed: Railway       │
-└──────────────────┬─────────────────────┘
-                   │ Prisma ORM
-                   ▼
-┌────────────────────────────────────────┐
-│  Database (SQLite)                     │
-│  prisma/dev.db  ·  3 tables            │
-└────────────────────────────────────────┘
-```
+The application is designed as a decoupled client-server architecture:
+- **Client**: A Single Page Application (SPA) built with React and Vite.
+- **Server**: A RESTful API built with Node.js and Express.
+- **Database**: A relational database managed via Prisma ORM.
 
-## Database Schema
+Communication between the client and server happens via standard HTTP REST endpoints using JSON payloads.
 
-```
-User
-  id        String  (PK, uuid)
-  name      String
-  email     String  (unique)
-  createdAt DateTime
+## Frontend Architecture
 
-Document
-  id        String  (PK, uuid)
-  title     String
-  content   String  (Tiptap JSON or HTML marker)
-  ownerId   String  (FK → User)
-  createdAt DateTime
-  updatedAt DateTime
+- **Framework**: React 18 with TypeScript for type safety.
+- **Routing**: Minimal conditional rendering (or a lightweight router) to keep the SPA fast and simple.
+- **Styling**: Tailwind CSS for rapid, consistent, and utility-first styling.
+- **State Management**: React Context (`UserContext`) is used to mock the authenticated user globally. Local component state manages document editing and UI toggles.
+- **API Layer**: Centralized API utility functions handle `fetch` calls, ensuring the `X-User-Id` header is consistently attached for mocking authentication.
 
-DocumentShare
-  id          String  (PK, uuid)
-  documentId  String  (FK → Document, cascade delete)
-  userId      String  (FK → User)
-  ──────────────────────────────
-  UNIQUE (documentId, userId)
-```
+## Backend Architecture
 
-## API Endpoints
+- **Framework**: Express.js with TypeScript.
+- **Middleware**: Configured with CORS (allowing specific production and local origins) and extended JSON body parsers (`limit: '10mb'`) to accommodate large rich-text payloads.
+- **Routing**: Modular Express routers (`/api/documents`, `/api/users`, etc.) for clear separation of concerns.
+- **Context Injection**: A custom middleware injects the Prisma client into the Express request object (`req.context.prisma`) to avoid tight global coupling and make testing easier.
 
-### Documents
+## Database Design
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| GET | `/api/documents` | required | List all accessible documents |
-| POST | `/api/documents` | required | Create document |
-| GET | `/api/documents/:id` | required | Get single document |
-| PUT | `/api/documents/:id` | required | Update title/content |
-| DELETE | `/api/documents/:id` | owner only | Delete document |
+The database uses a relational model with the following core entities:
+1. **User**: Represents a system user (`id`, `name`, `email`).
+2. **Document**: Represents a rich text document (`id`, `title`, `content`, `ownerId`).
+3. **Share**: A join table mapping a `Document` to a `User` with a specific `permission` level (`READ` or `WRITE`).
 
-### Sharing
+## API Structure
 
-| Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
-| POST | `/api/documents/:id/share` | owner only | Share with user |
-| GET | `/api/documents/:id/shares` | required | List shares |
-
-### Users
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/users` | List all users |
-| GET | `/api/users/current` | Get current user |
-
-**Auth:** All protected endpoints require `X-User-Id` header (mock auth — no JWT/OAuth).
-
-## Frontend Component Hierarchy
-
-```
-App (BrowserRouter + UserProvider)
-└── Layout
-    ├── Sidebar
-    │   ├── NavLinks (My Documents / Shared With Me)
-    │   └── UserSwitcher (Alice ↔ Bob)
-    └── Outlet (active route)
-        ├── /              → DocumentList (view="mine")
-        ├── /shared        → DocumentList (view="shared")
-        └── /doc/:id       → DocumentEditor
-                               ├── EditorToolbar
-                               ├── Tiptap (EditorContent)
-                               └── ShareDialog (modal)
-```
-
-## Key Design Decisions
-
-| Decision | Reason |
-|----------|--------|
-| Explicit save button | Simpler than autosave; satisfies "Save document" requirement without debounce complexity |
-| Tiptap StarterKit | One import gives bold, italic, headings, lists. Underline added separately |
-| `X-User-Id` header | Simplest mock auth — no JWT, no sessions, satisfies assessment requirement |
-| Frontend-only file parsing | .txt/.md files never hit the server as files; parsed in browser, stored as JSON |
-| SQLite | Zero config for local dev and Railway; correct choice for a demo |
-| Vite proxy | Avoids CORS in dev; clean switch to env var in production |
-| `marked` for markdown | Battle-tested, ~20KB, no parser to maintain |
-
-## Content Storage
-
-Tiptap documents are stored as JSON strings in the `content` column.
-
-```
-Normal doc:  '{"type":"doc","content":[...]}'
-Empty doc:   '{}'
-Uploaded .md: '{"__html":"<h1>Title</h1><p>...</p>"}'  ← parsed by editor on load
-Uploaded .txt: '{"type":"doc","content":[{"type":"paragraph",...}]}'
-```
+- `GET /api/users/current`: Mocks retrieving the currently authenticated user.
+- `GET /api/users`: Retrieves all users (useful for populating the share dialog).
+- `GET /api/documents`: Fetches all documents owned by or shared with the current user.
+- `POST /api/documents`: Creates a new document.
+- `GET /api/documents/:id`: Retrieves a single document by ID.
+- `PUT /api/documents/:id`: Updates a document's title or content.
+- `POST /api/documents/:id/share`: Shares a document with another user.
 
 ## Sharing Model
 
-- Owner can share with any other user
-- Shared user gets full edit access
-- Only the owner can delete or share
-- "Shared With Me" = documents where `ownerId !== currentUserId` but a share record exists
+Permissions are verified at the API level:
+- The `owner` of a document has implicit full control.
+- Other users must have a valid `Share` record associated with the document.
+- API endpoints strictly check the requester's `X-User-Id` against the document's ownership and share records before permitting reads or updates.
 
-## File Upload Flow
+## Persistence Strategy
 
-```
-User picks file
-  → FileReader.readAsText()
-  → .md:  marked(text) → HTML → stored as { __html: "..." }
-  → .txt: split lines → Tiptap paragraph nodes
-  → POST /api/documents { title, content }
-  → navigate to /doc/:newId
-```
+- **Database**: SQLite is used for simplicity, lightweight footprint, and zero-configuration setup during development and deployment.
+- **Railway Considerations**: Because Railway's standard filesystem is ephemeral, the backend startup script (`npm start`) runs Prisma database pushes and seeding on boot to ensure the schema and mock users are immediately available.
 
-## What Is NOT Built
+## Rich Text Editor Choice
 
-- Authentication / OAuth / JWT
-- Realtime collaboration / WebSockets / CRDT
-- Comments, suggestions, notifications
-- Search, tags, templates, version history
-- Complex permission roles
+- **Tiptap**: Tiptap was chosen over Draft.js, Quill, or Slate because of its headless architecture. It provides robust, reliable rich-text mechanics while granting 100% control over the UI and styling via Tailwind CSS.
+
+## Deployment Strategy
+
+- **Frontend**: Deployed as a static site on **Vercel** for global CDN edge delivery and lightning-fast loading.
+- **Backend**: Deployed as a Node container on **Railway** for seamless CI/CD and zero-downtime rollouts.
+- **Environment Management**: Secrets and API URLs are managed strictly through Vercel and Railway dashboard variables, ensuring clean separation between code and configuration.
+
+## Engineering Tradeoffs
+
+1. **Mock Authentication**: Auth0/JWT was skipped in favor of a mock `X-User-Id` header. This drastically reduces complexity while still thoroughly proving permission logic and data ownership.
+2. **SQLite vs PostgreSQL**: SQLite was chosen to eliminate database provisioning overhead. While PostgreSQL is better for heavy production concurrent writes, SQLite perfectly serves an MVP assessment.
+3. **Polling vs WebSockets**: Real-time collaborative cursors (CRDTs) were intentionally excluded to maintain a simple, reliable, and testable MVP within scope.
+
+## Future Improvements
+
+- **Real-time Collaboration**: Integrate Yjs and WebSockets for live multiplayer editing.
+- **True Authentication**: Replace the mock headers with JWTs and an OAuth provider.
+- **Persistent Cloud Database**: Migrate from SQLite to a managed PostgreSQL instance on Supabase or Neon.
+- **Pagination**: Implement cursor-based pagination on the document list for scale.

@@ -1,111 +1,84 @@
-# DocFlow
+# Ajaia DocFlow
 
-A lightweight collaborative document editor built for the Ajaia.ai AI Native Full Stack Developer hiring assessment.
+A production-ready, lightweight collaborative document editor built for the Ajaia.ai AI Native Full Stack Developer assessment.
 
-## What It Is
+## About the Developer
 
-DocFlow lets two mock users (Alice and Bob) create, edit, and share rich-text documents. Documents persist across refresh using SQLite.
-
-## Tech Stack
-
-| Layer | Technology |
-|-------|-----------|
-| Frontend | React 18, TypeScript, Vite, Tailwind CSS, Tiptap |
-| Backend | Node.js, Express, TypeScript |
-| Database | Prisma ORM, SQLite |
-| Testing | Vitest (integration tests) |
+Hi, I'm Yashveer Singh, founder of Yashveer Labs. I enjoy building AI-native products, full stack applications, and developer-focused software. This project was built as part of the Ajaia.ai AI-Native Full Stack Developer assessment.
 
 ## Features
 
-- **Create documents** — new document with default title
-- **Rename documents** — click the title to edit inline
-- **Edit documents** — rich text editor with formatting toolbar
-- **Save documents** — explicit save button or Ctrl+S
-- **Rich text** — Bold, Italic, Underline, H1/H2/H3, Bullet lists, Numbered lists
-- **File upload** — `.txt` and `.md` files become editable documents
-- **Sharing** — share documents with the other mock user
-- **My Documents** — view documents you own
-- **Shared With Me** — view documents shared with you
-- **User switcher** — toggle between Alice and Bob in the sidebar
+- **Rich Text Editing**: Create, edit, and format documents with a polished, minimalist interface.
+- **Document Management**: Create new documents, list existing ones, and save changes securely.
+- **File Upload & Markdown Parsing**: Upload `.txt` and `.md` files directly into the editor for instant parsing.
+- **Document Sharing**: Share documents with specific users with appropriate read/write permissions.
+- **Mock User System**: Switch between different test users instantly without complex authentication overhead.
+- **Production Ready**: Fully deployed with optimized asset delivery and secure CORS configuration.
 
-## Running Locally
+## Tech Stack
 
-### Prerequisites
+- **Frontend**: React 18, TypeScript, Vite, Tailwind CSS, Lucide React
+- **Backend**: Node.js, Express, TypeScript, Prisma ORM
+- **Database**: SQLite (Ephemeral on Railway, seeded on startup)
+- **Editor**: Tiptap (Headless rich text framework)
+- **Deployment**: Vercel (Frontend), Railway (Backend)
 
-- Node.js 18+
-- npm
+## Local Setup
 
-### Backend
+Follow these steps to run the application locally.
+
+### 1. Install Dependencies
+
+You must install dependencies for both the client and server.
 
 ```bash
-cd main/server
+# In the root directory (if using monorepo scripts) or individually:
+cd server
 npm install
-npm run db:push      # create SQLite database
-npm run db:seed      # seed Alice and Bob
-npm run dev          # start on http://localhost:3001
-```
 
-### Frontend
-
-```bash
-cd main/client
+cd ../client
 npm install
-npm run dev          # start on http://localhost:5173
 ```
 
-Open [http://localhost:5173](http://localhost:5173).
-
-### Running Tests
-
-With the backend running:
+### 2. Backend
 
 ```bash
-cd main/server
-npm test
+cd server
+# Start the backend development server (runs on port 3001 by default)
+npm run dev
 ```
+
+### 3. Frontend
+
+```bash
+cd client
+# Create a .env file from .env.example if needed, then start Vite
+npm run dev
+```
+
+*Note: The frontend runs on port 5173 by default and proxies `/api` requests to the backend.*
+
+## Seeded Users
+
+To test the sharing functionality, the database is pre-seeded with mock users. You can simulate being different users by changing the `X-User-Id` header (the frontend handles this transparently). 
+
+**Available Mock Users:**
+- **Alice Chen** (ID: `user-1`, Email: `alice@example.com`)
+- **Bob Park** (ID: `user-2`, Email: `bob@example.com`)
 
 ## Deployment
 
-### Frontend — Vercel
+- **Frontend (Live)**: [https://client-ten-beta-53.vercel.app](https://client-ten-beta-53.vercel.app)
+- **Backend (API)**: [https://server-production-74ad.up.railway.app](https://server-production-74ad.up.railway.app)
 
-1. Connect your GitHub repo to Vercel
-2. Set root directory to `main/client`
-3. Add environment variable: `VITE_API_URL` = your Railway backend URL
-4. Deploy
+## Supported Upload Types
 
-### Backend — Railway
-
-1. Connect your GitHub repo to Railway
-2. Set root directory to `main/server`
-3. Add environment variable: `DATABASE_URL` = `file:./dev.db`
-4. Set start command: `npm start`
-5. Add a persistent volume mounted at `/app/prisma`
-6. After first deploy, run: `npm run db:push && npm run db:seed`
+The editor supports uploading and parsing the following file formats:
+- **Text Files** (`.txt`)
+- **Markdown Files** (`.md`)
 
 ## Project Structure
 
-```
-main/
-├── client/          # Vite + React frontend
-│   └── src/
-│       ├── components/   # UI components
-│       └── lib/          # API client, user context
-├── server/          # Express backend
-│   ├── prisma/      # Schema + seed
-│   └── src/
-│       ├── routes/  # API route handlers
-│       └── __tests__/  # Vitest integration tests
-├── README.md
-├── ARCHITECTURE.md
-├── AI_WORKFLOW.md
-└── SUBMISSION.md
-```
-
-## Mock Users
-
-| User | Name | Email |
-|------|------|-------|
-| user-1 | Alice Chen | alice@example.com |
-| user-2 | Bob Park | bob@example.com |
-
-Switch between users using the sidebar. No authentication required.
+- `/client`: React frontend application built with Vite and Tailwind CSS.
+- `/server`: Node.js/Express backend API and Prisma database configuration.
+- `/Source Code`: The final submission folder containing all source code and required documentation.

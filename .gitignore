@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+dist/
+
+# Database
+server/prisma/*.db
+server/prisma/*.db-journal
+server/prisma/*.db-shm
+server/prisma/*.db-wal
+
+# Environment
+.env
+.env.local
+.env.production
+
+# Build artifacts
+build/
+.vite/
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Prisma generated
+prisma/migrations/
